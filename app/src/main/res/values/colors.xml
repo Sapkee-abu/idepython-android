@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="editor_bg">#282C34</color>
+    <color name="console_bg">#1E2127</color>
+    <color name="drawer_bg">#21252B</color>
+    <color name="primary">#2C313A</color>
+    <color name="primary_dark">#181A1F</color>
+    <color name="accent">#61AFEF</color>
+</resources>

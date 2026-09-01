@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:titleTextColor="@android:color/white"
+            app:navigationIcon="@android:drawable/ic_menu_sort_by_size"
+            app:menu="@menu/toolbar_menu" />
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#21252B"
+            app:tabMode="scrollable"
+            app:tabGravity="start"
+            app:tabIndicatorColor="#61AFEF"
+            app:tabTextColor="#7F8792"
+            app:tabSelectedTextColor="@android:color/white" />
+
+        <!-- Find & replace -->
+        <LinearLayout
+            android:id="@+id/findBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#2C313A"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="6dp"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/findInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/find_hint"
+                android:textColorHint="#5C6370"
+                android:textColor="@android:color/white"
+                android:singleLine="true"
+                android:inputType="text"
+                android:imeOptions="actionNext" />
+
+            <EditText
+                android:id="@+id/replaceInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:hint="@string/replace_hint"
+                android:textColorHint="#5C6370"
+                android:textColor="@android:color/white"
+                android:singleLine="true"
+                android:inputType="text" />
+
+            <ImageButton
+                android:id="@+id/findPrevButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/previous"
+                android:src="@android:drawable/arrow_up_float" />
+
+            <ImageButton
+                android:id="@+id/findNextButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/next"
+                android:src="@android:drawable/arrow_down_float" />
+
+            <Button
+                android:id="@+id/replaceButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/replace"
+                android:textColor="@android:color/white"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/replaceAllButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/replace_all"
+                android:textColor="@android:color/white"
+                android:textSize="11sp" />
+
+            <ImageButton
+                android:id="@+id/closeFindButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/close"
+                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+        </LinearLayout>
+
+        <!-- Editor -->
+        <ScrollView
+            android:id="@+id/editorScroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1.4"
+            android:background="#282C34"
+            android:fillViewport="true"
+            android:scrollbars="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/lineNumbers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="#21252B"
+                    android:fontFamily="monospace"
+                    android:gravity="end|top"
+                    android:includeFontPadding="false"
+                    android:lineSpacingExtra="0dp"
+                    android:minWidth="32dp"
+                    android:paddingHorizontal="8dp"
+                    android:paddingTop="12dp"
+                    android:textColor="#4B5263"
+                    android:textSize="14sp"
+                    tools:text="1\n2\n3" />
+
+                <EditText
+                    android:id="@+id/codeEditor"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:fontFamily="monospace"
+                    android:gravity="top|start"
+                    android:hint="@string/editor_hint"
+                    android:textColorHint="#5C6370"
+                    android:includeFontPadding="false"
+                    android:lineSpacingExtra="0dp"
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:padding="12dp"
+                    android:textColor="#ABB2BF"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Quick symbol toolbar -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#21252B"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/symbolToolbar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#3E4451" />
+
+        <!-- Console -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#1E2127"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#161A20"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:text="@string/console_title"
+                android:textColor="#7F8792"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <ScrollView
+                android:id="@+id/consoleScroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <TextView
+                    android:id="@+id/consoleOutput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:padding="12dp"
+                    android:textColor="#D1D5DB"
+                    android:textIsSelectable="true"
+                    android:textSize="13sp" />
+            </ScrollView>
+
+            <LinearLayout
+                android:id="@+id/inputRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#161A20"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="6dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=">>>"
+                    android:textColor="#61AFEF"
+                    android:fontFamily="monospace"
+                    android:paddingEnd="6dp" />
+
+                <EditText
+                    android:id="@+id/stdinInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:fontFamily="monospace"
+                    android:hint="@string/waiting_for_input"
+                    android:textColorHint="#5C6370"
+                    android:imeOptions="actionSend"
+                    android:inputType="text"
+                    android:singleLine="true"
+                    android:textColor="@android:color/white"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/stdinSendButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/send"
+                    android:textColor="#61AFEF" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- File drawer -->
+    <LinearLayout
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#21252B"
+        android:orientation="vertical"
+        android:fitsSystemWindows="true">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#181A1F"
+            android:padding="16dp"
+            android:text="@string/files_title"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/filesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/newFileButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="12dp"
+            android:text="@string/new_file" />
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IDEPython</string>
+    <string name="files_title">ไฟล์ Python</string>
+    <string name="console_title">เอาต์พุต (Console)</string>
+    <string name="new_file">+ ไฟล์ใหม่</string>
+    <string name="run">รัน</string>
+    <string name="stop">หยุด</string>
+    <string name="save">บันทึก</string>
+    <string name="find">ค้นหา</string>
+    <string name="clear_console">ล้างเอาต์พุต</string>
+    <string name="delete">ลบไฟล์</string>
+    <string name="rename">เปลี่ยนชื่อ</string>
+    <string name="cancel">ยกเลิก</string>
+    <string name="create">สร้าง</string>
+    <string name="file_name_hint">ชื่อไฟล์ เช่น main.py</string>
+    <string name="running">กำลังรัน…</string>
+    <string name="finished">เสร็จสิ้น</string>
+    <string name="saved">บันทึกแล้ว</string>
+    <string name="editor_hint"># เขียนโค้ด Python ที่นี่</string>
+
+    <string name="find_hint">ค้นหา…</string>
+    <string name="replace_hint">แทนที่ด้วย…</string>
+    <string name="previous">ก่อนหน้า</string>
+    <string name="next">ถัดไป</string>
+    <string name="replace">แทนที่</string>
+    <string name="replace_all">แทนที่ทั้งหมด</string>
+    <string name="close">ปิด</string>
+    <string name="close_symbol">✕</string>
+    <string name="no_matches">ไม่พบข้อความที่ค้นหา</string>
+    <string name="replaced_count">แทนที่แล้ว %1$d จุด</string>
+
+    <string name="undo">เลิกทำ</string>
+    <string name="redo">ทำซ้ำ</string>
+    <string name="import_file">นำเข้าไฟล์…</string>
+    <string name="export_file">แชร์/ส่งออกไฟล์</string>
+    <string name="font_increase">ขยายตัวอักษร</string>
+    <string name="font_decrease">ย่อตัวอักษร</string>
+
+    <string name="waiting_for_input">พิมพ์ค่าแล้วกดส่ง…</string>
+    <string name="send">ส่ง</string>
+
+    <string name="close_tab_title">ปิดแท็บ</string>
+    <string name="close_tab_message">ปิดแท็บของ %1$s? (ไฟล์จะยังถูกบันทึกไว้)</string>
+
+    <string name="error_at_line">เกิดข้อผิดพลาดที่บรรทัดที่ %1$d</string>
+    <string name="go_to_line">ไปที่บรรทัด</string>
+</resources>
