@@ -16,7 +16,11 @@ android {
         versionName = "1.0"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // Just arm64-v8a: virtually every Android tablet from the last
+            // ~8 years, and keeps the APK under chat-delivery size limits.
+            // Add "armeabi-v7a" back in if you need to support very old
+            // 32-bit-only devices.
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
