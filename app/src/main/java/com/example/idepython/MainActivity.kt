@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var stdinInputView: EditText? = null
     private var stdinRowView: View? = null
     private var isAwaitingInput = false
+    private var runArgs: List<String> = emptyList()
 
     private val importLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::importFile) }
@@ -88,6 +89,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+        editorController.onTextSettled = { text -> checkSyntaxAsync(text) }
 
         restoreSession()
     }
@@ -97,6 +99,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupRail() {
         binding.menuButton.setOnClickListener { binding.drawerLayout.openDrawer(Gravity.START) }
         binding.railRunButton.setOnClickListener { runCode() }
+        binding.railRunButton.setOnLongClickListener { promptRunArgs(); true }
         binding.railStopButton.setOnClickListener { runner.stop() }
         binding.railConsoleButton.setOnClickListener { showConsoleDialog() }
         binding.railSaveButton.setOnClickListener {
@@ -260,6 +263,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun restoreSession() {
         editorController.fontSizeSp = prefs.getFloat(KEY_FONT_SIZE, 14f)
+        val savedArgs = prefs.getString(KEY_RUN_ARGS, "") ?: ""
+        runArgs = if (savedArgs.isBlank()) emptyList() else savedArgs.trim().split(Regex("\\s+"))
         val dir = FileManager.scriptsDir(this)
         val names = prefs.getString(KEY_TABS, null)
             ?.split(",")
@@ -501,7 +506,57 @@ class MainActivity : AppCompatActivity() {
         isAwaitingInput = false
         stdinRowView?.visibility = View.GONE
         showConsoleDialog()
-        runner.run(editorController.getText())
+        runner.run(editorController.getText(), runArgs)
+    }
+
+    private fun promptRunArgs() {
+        val input = EditText(this)
+        input.hint = getString(R.string.run_args_hint)
+        input.setText(runArgs.joinToString(" "))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.run_args_title)
+            .setView(input)
+            .setPositiveButton(R.string.create) { _, _ ->
+                val raw = input.text.toString().trim()
+                runArgs = if (raw.isEmpty()) emptyList() else raw.split(Regex("\\s+"))
+                prefs.edit().putString(KEY_RUN_ARGS, raw).apply()
+                Toast.makeText(this, R.string.run_args_saved, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    // ---- Live syntax check (debounced via editorController.onTextSettled) --------
+
+    private fun checkSyntaxAsync(code: String) {
+        Thread {
+            val result = try {
+                runner.checkSyntax(code)
+            } catch (e: Exception) {
+                null
+            }
+            runOnUiThread { applySyntaxCheckResult(result) }
+        }.start()
+    }
+
+    private fun applySyntaxCheckResult(errorInfo: String?) {
+        if (errorInfo == null) {
+            binding.syntaxErrorBanner.visibility = View.GONE
+            editorController.clearErrorLineMarker()
+            return
+        }
+        val parts = errorInfo.split(":", limit = 2)
+        val line = parts.getOrNull(0)?.toIntOrNull() ?: return
+        val message = parts.getOrNull(1) ?: ""
+        binding.syntaxErrorBanner.text = getString(R.string.syntax_error_banner, line, message)
+        binding.syntaxErrorBanner.visibility = View.VISIBLE
+        binding.syntaxErrorBanner.setOnClickListener {
+            val offset = editorController.offsetForLine(line) ?: return@setOnClickListener
+            editorController.requestEditorFocus()
+            editorController.setSelection(offset)
+            scrollEditorToOffset(offset)
+        }
+        editorController.markErrorLine(line)
     }
 
     private fun showConsoleDialog() {
@@ -630,6 +685,7 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_TABS = "open_tabs"
         private const val KEY_ACTIVE = "active_tab"
         private const val KEY_FONT_SIZE = "font_size"
+        private const val KEY_RUN_ARGS = "run_args"
         private val ERROR_LINE_REGEX = Regex("""File "<idepython>", line (\d+)""")
     }
 }

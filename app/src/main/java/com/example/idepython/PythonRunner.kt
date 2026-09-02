@@ -26,17 +26,23 @@ class PythonRunner(
     val isRunning: Boolean
         get() = job?.isAlive == true
 
-    fun run(code: String) {
+    fun run(code: String, args: List<String> = emptyList()) {
         stop()
         job = thread(isDaemon = true) {
             try {
                 val runnerModule = Python.getInstance().getModule("runner")
-                runnerModule.callAttr("run_code", code, callback)
+                runnerModule.callAttr("run_code", code, callback, args)
             } catch (e: PyException) {
                 onOutput(e.message ?: "Python error", "stderr")
                 onFinished()
             }
         }
+    }
+
+    /** Runs check_syntax(code) synchronously — call from a background thread. */
+    fun checkSyntax(code: String): String? {
+        val result = Python.getInstance().getModule("runner").callAttr("check_syntax", code)
+        return if (result.isNone) null else result.toString()
     }
 
     /** Supplies the line an in-flight onInputRequested() call is blocked on. */

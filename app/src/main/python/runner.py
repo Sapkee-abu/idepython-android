@@ -32,11 +32,12 @@ class _CallbackReader(io.TextIOBase):
         return self.readline()
 
 
-def run_code(code, callback):
-    old_stdout, old_stderr, old_stdin = sys.stdout, sys.stderr, sys.stdin
+def run_code(code, callback, args=None):
+    old_stdout, old_stderr, old_stdin, old_argv = sys.stdout, sys.stderr, sys.stdin, sys.argv
     sys.stdout = _CallbackWriter(callback, "stdout")
     sys.stderr = _CallbackWriter(callback, "stderr")
     sys.stdin = _CallbackReader(callback)
+    sys.argv = ["<idepython>"] + (list(args) if args else [])
     try:
         exec(compile(code, "<idepython>", "exec"), {"__name__": "__main__"})
     except BaseException:
@@ -45,4 +46,14 @@ def run_code(code, callback):
         sys.stdout = old_stdout
         sys.stderr = old_stderr
         sys.stdin = old_stdin
+        sys.argv = old_argv
         callback.onFinished()
+
+
+def check_syntax(code):
+    """Returns None if code compiles, else "line:message" for a live error banner."""
+    try:
+        compile(code, "<idepython>", "exec")
+        return None
+    except SyntaxError as e:
+        return "{}:{}".format(e.lineno or 1, e.msg)

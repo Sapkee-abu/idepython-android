@@ -1,20 +1,24 @@
 package com.example.idepython
 
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
+import android.text.Spannable
 import android.text.TextWatcher
-import android.widget.EditText
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.widget.TextView
 
 /**
  * Wraps the code EditText with the behaviors a plain EditText doesn't give
  * you: a synced line-number gutter, auto-indent, auto-closing brackets and
- * quotes (with type-through), debounced syntax highlighting, and a simple
- * snapshot-based undo/redo stack.
+ * quotes (with type-through), bracket-match highlighting, debounced syntax
+ * highlighting, a simple snapshot-based undo/redo stack, and a "settled
+ * text" hook for a caller-driven syntax check.
  */
 class CodeEditorController(
-    private val editor: EditText,
+    private val editor: CodeEditText,
     private val lineNumbers: TextView
 ) {
     private var isInternalEdit = false
@@ -22,15 +26,21 @@ class CodeEditorController(
 
     private var highlightRunnable: Runnable? = null
     private var snapshotRunnable: Runnable? = null
+    private var settleRunnable: Runnable? = null
 
     private val undoStack = ArrayDeque<String>()
     private val redoStack = ArrayDeque<String>()
     private var lastSnapshot: String = ""
     private var lastLineCount = -1
+    private var errorLine: Int? = null
 
     private val openToClose = mapOf('(' to ')', '[' to ']', '{' to '}')
+    private val closeToOpen = mapOf(')' to '(', ']' to '[', '}' to '{')
     private val closers = setOf(')', ']', '}')
     private val quotes = setOf('"', '\'')
+
+    /** Fired ~500ms after typing settles, with the current text — e.g. for a syntax check. */
+    var onTextSettled: ((String) -> Unit)? = null
 
     var fontSizeSp: Float = 14f
         set(value) {
@@ -61,8 +71,10 @@ class CodeEditorController(
                 updateLineNumbers(editable)
                 scheduleHighlight(editable)
                 scheduleSnapshot()
+                scheduleSettle(editable.toString())
             }
         })
+        editor.onSelectionChange = { start, end -> if (start == end) updateBracketMatch(start) }
         lastSnapshot = editor.text.toString()
         updateLineNumbers(editor.text)
     }
@@ -117,13 +129,113 @@ class CodeEditorController(
         isInternalEdit = false
     }
 
+    // ---- Bracket matching ---------------------------------------------------
+
+    private fun updateBracketMatch(cursor: Int) {
+        val editable = editor.text ?: return
+        editable.getSpans(0, editable.length, BackgroundColorSpan::class.java)
+            .forEach { editable.removeSpan(it) }
+
+        // Check the character right after the cursor, then right before it.
+        val candidate = when {
+            cursor < editable.length && isBracket(editable[cursor]) -> cursor
+            cursor - 1 >= 0 && isBracket(editable[cursor - 1]) -> cursor - 1
+            else -> return
+        }
+        val match = findMatchingBracket(editable, candidate) ?: return
+        highlightBracket(editable, candidate)
+        highlightBracket(editable, match)
+    }
+
+    private fun isBracket(c: Char) = c in openToClose || c in closeToOpen
+
+    private fun findMatchingBracket(text: CharSequence, pos: Int): Int? {
+        val bracket = text[pos]
+        val isOpen = bracket in openToClose
+        val partner = if (isOpen) openToClose.getValue(bracket) else closeToOpen.getValue(bracket)
+        var depth = 0
+        return if (isOpen) {
+            for (i in pos until text.length) {
+                when (text[i]) {
+                    bracket -> depth++
+                    partner -> { depth--; if (depth == 0) return i }
+                }
+            }
+            null
+        } else {
+            for (i in pos downTo 0) {
+                when (text[i]) {
+                    bracket -> depth++
+                    partner -> { depth--; if (depth == 0) return i }
+                }
+            }
+            null
+        }
+    }
+
+    private fun highlightBracket(editable: Editable, pos: Int) {
+        editable.setSpan(
+            BackgroundColorSpan(Color.parseColor("#3E4451")),
+            pos,
+            pos + 1,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+    }
+
+    // ---- Live error-line marker (gutter) -------------------------------------
+
+    fun markErrorLine(line: Int) {
+        errorLine = line
+        applyErrorLineMarker()
+    }
+
+    fun clearErrorLineMarker() {
+        if (errorLine == null) return
+        errorLine = null
+        applyErrorLineMarker()
+    }
+
+    private fun applyErrorLineMarker() {
+        val spannable = lineNumbers.text as? Spannable ?: return
+        spannable.getSpans(0, spannable.length, ForegroundColorSpan::class.java)
+            .forEach { spannable.removeSpan(it) }
+        val line = errorLine ?: return
+        var start = 0
+        for (i in 1 until line) {
+            val next = spannable.indexOf("\n", start)
+            if (next == -1) return
+            start = next + 1
+        }
+        val end = spannable.indexOf("\n", start).let { if (it == -1) spannable.length else it }
+        if (start >= end) return
+        spannable.setSpan(
+            ForegroundColorSpan(Color.parseColor("#E06C75")),
+            start,
+            end,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+    }
+
     // ---- Line numbers ----------------------------------------------------
 
     private fun updateLineNumbers(editable: CharSequence) {
         val count = editable.count { it == '\n' } + 1
-        if (count == lastLineCount) return
+        if (count == lastLineCount) {
+            applyErrorLineMarker()
+            return
+        }
         lastLineCount = count
-        lineNumbers.text = (1..count).joinToString("\n")
+        lineNumbers.setText((1..count).joinToString("\n"), TextView.BufferType.SPANNABLE)
+        applyErrorLineMarker()
+    }
+
+    // ---- Settle hook (debounced) ---------------------------------------------
+
+    private fun scheduleSettle(text: String) {
+        settleRunnable?.let { handler.removeCallbacks(it) }
+        val runnable = Runnable { onTextSettled?.invoke(text) }
+        settleRunnable = runnable
+        handler.postDelayed(runnable, 500)
     }
 
     // ---- Syntax highlight (debounced) -------------------------------------
@@ -174,6 +286,7 @@ class CodeEditorController(
         lastSnapshot = text
         updateLineNumbers(text)
         PythonSyntaxHighlighter.highlight(editor.text)
+        onTextSettled?.invoke(text)
     }
 
     // ---- Content management ------------------------------------------------
@@ -187,8 +300,10 @@ class CodeEditorController(
         lastLineCount = -1
         undoStack.clear()
         redoStack.clear()
+        errorLine = null
         updateLineNumbers(text)
         PythonSyntaxHighlighter.highlight(editor.text)
+        onTextSettled?.invoke(text)
     }
 
     fun getText(): String = editor.text.toString()

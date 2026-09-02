@@ -48,4 +48,9 @@
 
     <string name="more">เพิ่มเติม</string>
     <string name="about">เกี่ยวกับ (เวอร์ชัน Python)</string>
+
+    <string name="syntax_error_banner">⚠ Syntax error บรรทัด %1$d: %2$s</string>
+    <string name="run_args_title">อาร์กิวเมนต์ตอนรัน (sys.argv)</string>
+    <string name="run_args_hint">เช่น arg1 arg2 arg3</string>
+    <string name="run_args_saved">บันทึกอาร์กิวเมนต์แล้ว</string>
 </resources>

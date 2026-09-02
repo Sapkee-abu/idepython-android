@@ -208,6 +208,19 @@
                 android:layout_weight="1"
                 android:orientation="vertical">
 
+                <TextView
+                    android:id="@+id/syntaxErrorBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#4A1F1F"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:textColor="#E06C75"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="⚠ Syntax error บรรทัด 3: invalid syntax" />
+
                 <ScrollView
                     android:id="@+id/editorScroll"
                     android:layout_width="match_parent"
@@ -238,7 +251,7 @@
                             android:textSize="14sp"
                             tools:text="1\n2\n3" />
 
-                        <EditText
+                        <com.example.idepython.CodeEditText
                             android:id="@+id/codeEditor"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
