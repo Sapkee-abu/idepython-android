@@ -1,21 +1,31 @@
 package com.example.idepython
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 
 class FilesAdapter(
-    private val onOpen: (File) -> Unit,
+    private val onOpenFile: (File) -> Unit,
+    private val onOpenFolder: (File) -> Unit,
+    private val onNavigateUp: () -> Unit,
     private val onLongPress: (File) -> Unit
 ) : RecyclerView.Adapter<FilesAdapter.FileViewHolder>() {
 
-    private val files = mutableListOf<File>()
+    private var showUp = false
+    private val entries = mutableListOf<File>()
+    var textColor: Int? = null
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
-    fun submit(newFiles: List<File>) {
-        files.clear()
-        files.addAll(newFiles)
+    fun submit(canGoUp: Boolean, newEntries: List<File>) {
+        showUp = canGoUp
+        entries.clear()
+        entries.addAll(newEntries)
         notifyDataSetChanged()
     }
 
@@ -26,18 +36,36 @@ class FilesAdapter(
     }
 
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
-        val file = files[position]
+        textColor?.let { holder.label.setTextColor(it) }
+        if (showUp && position == 0) {
+            holder.label.text = ".."
+            holder.label.setCompoundDrawablesWithIntrinsicBounds(
+                android.R.drawable.ic_menu_revert, 0, 0, 0
+            )
+            holder.itemView.setOnClickListener { onNavigateUp() }
+            holder.itemView.setOnLongClickListener { true }
+            return
+        }
+        val file = entries[position - if (showUp) 1 else 0]
         holder.label.text = file.name
-        holder.itemView.setOnClickListener { onOpen(file) }
+        val icon = if (file.isDirectory) {
+            android.R.drawable.ic_menu_agenda
+        } else {
+            android.R.drawable.ic_menu_edit
+        }
+        holder.label.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
+        holder.itemView.setOnClickListener {
+            if (file.isDirectory) onOpenFolder(file) else onOpenFile(file)
+        }
         holder.itemView.setOnLongClickListener {
             onLongPress(file)
             true
         }
     }
 
-    override fun getItemCount(): Int = files.size
+    override fun getItemCount(): Int = entries.size + if (showUp) 1 else 0
 
-    class FileViewHolder(view: android.view.View) : RecyclerView.ViewHolder(view) {
+    class FileViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val label: TextView = view.findViewById(R.id.fileName)
     }
 }

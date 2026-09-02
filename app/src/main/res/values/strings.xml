@@ -56,4 +56,8 @@
 
     <string name="switch_to_light">สลับเป็นธีมสว่าง</string>
     <string name="switch_to_dark">สลับเป็นธีมมืด</string>
+
+    <string name="new_folder">+ โฟลเดอร์</string>
+    <string name="folder_name_hint">ชื่อโฟลเดอร์</string>
+    <string name="delete_folder_message">ลบโฟลเดอร์ %1$s และทุกอย่างข้างในหรือไม่?</string>
 </resources>

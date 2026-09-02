@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("ide_prefs", MODE_PRIVATE) }
 
     private val openTabs = mutableListOf<File>()
+    private lateinit var currentDrawerDir: File
     private var currentTabIndex = -1
     private var suppressTabListener = false
     private val stderrBuffer = StringBuilder()
@@ -174,6 +175,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.drawerContainer.setBackgroundColor(p.chromeBg)
         binding.drawerHeader.setBackgroundColor(p.drawerHeaderBg)
+        binding.drawerHeader.setTextColor(p.tabTextActive)
+        filesAdapter.textColor = p.editorText
         binding.tabLayout.setTabTextColors(p.tabTextInactive, p.tabTextActive)
         // Tabs use custom views, so setTabTextColors above doesn't reach them.
         for (i in 0 until binding.tabLayout.tabCount) {
@@ -295,6 +298,13 @@ class MainActivity : AppCompatActivity() {
         if (index >= 0) removeTab(index)
     }
 
+    /** Closes every open tab whose file lives at or under dir — used when a folder is deleted. */
+    private fun removeTabsUnder(dir: File) {
+        val prefix = dir.path + File.separator
+        openTabs.filter { it.path == dir.path || it.path.startsWith(prefix) }
+            .forEach { removeTabIfOpen(it) }
+    }
+
     private fun refreshTabTitle(file: File) {
         val index = openTabs.indexOfFirst { it.path == file.path }
         if (index < 0) return
@@ -304,8 +314,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun ensureAtLeastOneTab() {
         if (openTabs.isNotEmpty()) return
-        val files = FileManager.listFiles(this)
-        val target = files.firstOrNull() ?: FileManager.create(this, "main.py").also { loadFiles() }
+        val root = FileManager.scriptsDir(this)
+        val target = FileManager.findAnyPyFile(root) ?: FileManager.create(root, "main.py").also { loadFiles() }
         openTabs.add(target)
         addTabView(target)
         switchToTab(0)
@@ -314,8 +324,9 @@ class MainActivity : AppCompatActivity() {
     // ---- Session persistence ------------------------------------------------
 
     private fun persistSession() {
+        val rootPrefix = FileManager.scriptsDir(this).path + File.separator
         prefs.edit()
-            .putString(KEY_TABS, openTabs.joinToString(",") { it.name })
+            .putString(KEY_TABS, openTabs.joinToString(",") { it.path.removePrefix(rootPrefix) })
             .putInt(KEY_ACTIVE, currentTabIndex)
             .putFloat(KEY_FONT_SIZE, editorController.fontSizeSp)
             .apply()
@@ -326,11 +337,12 @@ class MainActivity : AppCompatActivity() {
         val savedArgs = prefs.getString(KEY_RUN_ARGS, "") ?: ""
         runArgs = if (savedArgs.isBlank()) emptyList() else savedArgs.trim().split(Regex("\\s+"))
         val dir = FileManager.scriptsDir(this)
-        val names = prefs.getString(KEY_TABS, null)
+        // Relative paths (may include subfolders) saved by persistSession().
+        val relativePaths = prefs.getString(KEY_TABS, null)
             ?.split(",")
             ?.filter { it.isNotBlank() }
             ?: emptyList()
-        val restored = names.mapNotNull { name -> File(dir, name).takeIf { it.exists() } }
+        val restored = relativePaths.mapNotNull { rel -> File(dir, rel).takeIf { it.exists() } }
 
         setupFileDrawerList()
 
@@ -345,19 +357,29 @@ class MainActivity : AppCompatActivity() {
     // ---- File drawer -------------------------------------------------
 
     private fun setupFileDrawer() {
+        currentDrawerDir = FileManager.scriptsDir(this)
         filesAdapter = FilesAdapter(
-            onOpen = { file -> openFileInTab(file); binding.drawerLayout.closeDrawers() },
+            onOpenFile = { file -> openFileInTab(file); binding.drawerLayout.closeDrawers() },
+            onOpenFolder = { folder -> currentDrawerDir = folder; loadFiles() },
+            onNavigateUp = {
+                currentDrawerDir = currentDrawerDir.parentFile ?: currentDrawerDir
+                loadFiles()
+            },
             onLongPress = { file -> showFileOptions(file) }
         )
         binding.filesRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.filesRecyclerView.adapter = filesAdapter
         binding.newFileButton.setOnClickListener { promptNewFile() }
+        binding.newFolderButton.setOnClickListener { promptNewFolder() }
     }
 
     private fun setupFileDrawerList() = loadFiles()
 
     private fun loadFiles() {
-        filesAdapter.submit(FileManager.listFiles(this))
+        val root = FileManager.scriptsDir(this)
+        val canGoUp = currentDrawerDir.path != root.path
+        binding.drawerHeader.text = if (canGoUp) currentDrawerDir.name else getString(R.string.files_title)
+        filesAdapter.submit(canGoUp, FileManager.listDir(currentDrawerDir))
     }
 
     private fun promptNewFile() {
@@ -369,10 +391,27 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.create) { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
-                    val file = FileManager.create(this, name)
+                    val file = FileManager.create(currentDrawerDir, name)
                     loadFiles()
                     openFileInTab(file)
                     binding.drawerLayout.closeDrawers()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun promptNewFolder() {
+        val input = EditText(this)
+        input.hint = getString(R.string.folder_name_hint)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.new_folder)
+            .setView(input)
+            .setPositiveButton(R.string.create) { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    FileManager.createFolder(currentDrawerDir, name)
+                    loadFiles()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -394,18 +433,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun promptRename(file: File) {
         val input = EditText(this)
-        input.setText(file.nameWithoutExtension)
+        input.setText(if (file.isDirectory) file.name else file.nameWithoutExtension)
         AlertDialog.Builder(this)
             .setTitle(R.string.rename)
             .setView(input)
             .setPositiveButton(R.string.create) { _, _ ->
                 val newName = input.text.toString().trim()
                 if (newName.isNotEmpty()) {
+                    val oldPath = file.path
                     val renamed = FileManager.rename(file, newName)
-                    val index = openTabs.indexOfFirst { it.path == file.path }
-                    if (index >= 0) openTabs[index] = renamed
+                    if (file.isDirectory) {
+                        // Remap any open tab whose file lived under the renamed folder.
+                        val prefix = oldPath + File.separator
+                        for (i in openTabs.indices) {
+                            val p = openTabs[i].path
+                            if (p.startsWith(prefix)) {
+                                openTabs[i] = File(renamed, p.substring(prefix.length))
+                            }
+                        }
+                    } else {
+                        val index = openTabs.indexOfFirst { it.path == file.path }
+                        if (index >= 0) openTabs[index] = renamed
+                        refreshTabTitle(renamed)
+                    }
                     loadFiles()
-                    refreshTabTitle(renamed)
                 }
             }
             .setNegativeButton(R.string.cancel, null)
@@ -413,12 +464,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(file: File) {
+        val message = if (file.isDirectory) {
+            getString(R.string.delete_folder_message, file.name)
+        } else {
+            file.name
+        }
         AlertDialog.Builder(this)
             .setTitle(R.string.delete)
-            .setMessage(file.name)
+            .setMessage(message)
             .setPositiveButton(R.string.delete) { _, _ ->
+                if (file.isDirectory) removeTabsUnder(file) else removeTabIfOpen(file)
                 FileManager.delete(file)
-                removeTabIfOpen(file)
                 loadFiles()
             }
             .setNegativeButton(R.string.cancel, null)
@@ -434,7 +490,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun importFile(uri: Uri) {
         val name = queryDisplayName(uri) ?: "imported.py"
-        val target = FileManager.uniqueTarget(this, name)
+        val target = FileManager.uniqueTarget(currentDrawerDir, name)
         contentResolver.openInputStream(uri)?.use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
         }
