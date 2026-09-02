@@ -45,4 +45,7 @@
 
     <string name="error_at_line">เกิดข้อผิดพลาดที่บรรทัดที่ %1$d</string>
     <string name="go_to_line">ไปที่บรรทัด</string>
+
+    <string name="more">เพิ่มเติม</string>
+    <string name="about">เกี่ยวกับ (เวอร์ชัน Python)</string>
 </resources>

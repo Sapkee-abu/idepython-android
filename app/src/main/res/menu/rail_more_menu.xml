@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/action_import" android:title="@string/import_file" />
+    <item android:id="@+id/action_export" android:title="@string/export_file" />
+    <item android:id="@+id/action_font_increase" android:title="@string/font_increase" />
+    <item android:id="@+id/action_font_decrease" android:title="@string/font_decrease" />
+    <item android:id="@+id/action_about" android:title="@string/about" />
+</menu>

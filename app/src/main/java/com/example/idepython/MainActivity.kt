@@ -4,11 +4,17 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.text.SpannableStringBuilder
+import android.text.Spannable
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.PopupMenu
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -17,6 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import com.example.idepython.databinding.ActivityMainBinding
+import com.example.idepython.databinding.DialogConsoleBinding
 import com.example.idepython.databinding.ItemTabBinding
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
@@ -34,6 +41,17 @@ class MainActivity : AppCompatActivity() {
     private var currentTabIndex = -1
     private var suppressTabListener = false
     private val stderrBuffer = StringBuilder()
+
+    // Console output persists across runs until the user taps Clear. The
+    // popup dialog is just a window onto this buffer — closing it doesn't
+    // lose anything, and it keeps updating live while the dialog is open.
+    private val consoleBuffer = SpannableStringBuilder()
+    private var consoleDialog: AlertDialog? = null
+    private var consoleOutputView: TextView? = null
+    private var consoleScrollView: ScrollView? = null
+    private var stdinInputView: EditText? = null
+    private var stdinRowView: View? = null
+    private var isAwaitingInput = false
 
     private val importLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::importFile) }
@@ -53,10 +71,9 @@ class MainActivity : AppCompatActivity() {
 
         editorController = CodeEditorController(binding.codeEditor, binding.lineNumbers)
 
-        setupToolbar()
+        setupRail()
         setupSymbolToolbar()
         setupFindBar()
-        setupInputRow()
         setupFileDrawer()
         setupTabLayout()
 
@@ -65,8 +82,9 @@ class MainActivity : AppCompatActivity() {
             onFinished = { runOnUiThread { showErrorJumpIfAny() } },
             onInputRequested = {
                 runOnUiThread {
-                    binding.inputRow.visibility = View.VISIBLE
-                    binding.stdinInput.requestFocus()
+                    isAwaitingInput = true
+                    showConsoleDialog()
+                    showInputRow()
                 }
             }
         )
@@ -74,30 +92,48 @@ class MainActivity : AppCompatActivity() {
         restoreSession()
     }
 
-    // ---- Toolbar --------------------------------------------------------
+    // ---- Left action rail --------------------------------------------------
 
-    private fun setupToolbar() {
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
-        binding.toolbar.setNavigationOnClickListener {
-            binding.drawerLayout.openDrawer(Gravity.START)
+    private fun setupRail() {
+        binding.menuButton.setOnClickListener { binding.drawerLayout.openDrawer(Gravity.START) }
+        binding.railRunButton.setOnClickListener { runCode() }
+        binding.railStopButton.setOnClickListener { runner.stop() }
+        binding.railConsoleButton.setOnClickListener { showConsoleDialog() }
+        binding.railSaveButton.setOnClickListener {
+            saveCurrentTab()
+            Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
         }
-        binding.toolbar.setOnMenuItemClickListener { item ->
+        binding.railFindButton.setOnClickListener { toggleFindBar() }
+        binding.railMoreButton.setOnClickListener { showMoreMenu(it) }
+    }
+
+    private fun showMoreMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menuInflater.inflate(R.menu.rail_more_menu, popup.menu)
+        popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.action_run -> { runCode(); true }
-                R.id.action_stop -> { runner.stop(); true }
-                R.id.action_find -> { toggleFindBar(); true }
-                R.id.action_save -> { saveCurrentTab(); Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show(); true }
                 R.id.action_import -> { importLauncher.launch(arrayOf("*/*")); true }
-                R.id.action_export -> {
-                    exportLauncher.launch(currentFile()?.name ?: "code.py"); true
-                }
+                R.id.action_export -> { exportLauncher.launch(currentFile()?.name ?: "code.py"); true }
                 R.id.action_font_increase -> { editorController.fontSizeSp += 2f; persistSession(); true }
                 R.id.action_font_decrease -> { editorController.fontSizeSp -= 2f; persistSession(); true }
-                R.id.action_clear_console -> { binding.consoleOutput.text = ""; true }
+                R.id.action_about -> { showAboutDialog(); true }
                 else -> false
             }
         }
+        popup.show()
+    }
+
+    private fun showAboutDialog() {
+        val version = try {
+            Python.getInstance().getModule("platform").callAttr("python_version").toString()
+        } catch (e: Exception) {
+            "?"
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.about)
+            .setMessage("IDEPython\nPython $version (Chaquopy)")
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun currentFile(): File? = openTabs.getOrNull(currentTabIndex)
@@ -458,19 +494,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Run / stop / console ------------------------------------------------
+    // ---- Run / console / stdin ------------------------------------------------
 
     private fun runCode() {
         saveCurrentTab()
-        binding.consoleOutput.text = ""
-        stderrBuffer.clear()
-        binding.inputRow.visibility = View.GONE
+        isAwaitingInput = false
+        stdinRowView?.visibility = View.GONE
+        showConsoleDialog()
         runner.run(editorController.getText())
     }
 
-    private fun setupInputRow() {
-        binding.stdinSendButton.setOnClickListener { submitStdinInput() }
-        binding.stdinInput.setOnEditorActionListener { _, actionId, _ ->
+    private fun showConsoleDialog() {
+        if (consoleDialog?.isShowing == true) return
+
+        val dialogBinding = DialogConsoleBinding.inflate(layoutInflater)
+        consoleOutputView = dialogBinding.consoleOutput
+        consoleScrollView = dialogBinding.consoleScroll
+        stdinInputView = dialogBinding.stdinInput
+        stdinRowView = dialogBinding.inputRow
+
+        dialogBinding.consoleOutput.text = consoleBuffer
+        dialogBinding.consoleScroll.post { dialogBinding.consoleScroll.fullScroll(View.FOCUS_DOWN) }
+
+        dialogBinding.consoleClearButton.setOnClickListener {
+            consoleBuffer.clear()
+            stderrBuffer.clear()
+            dialogBinding.consoleOutput.text = ""
+        }
+        dialogBinding.consoleCloseButton.setOnClickListener { consoleDialog?.dismiss() }
+        dialogBinding.stdinSendButton.setOnClickListener { submitStdinInput() }
+        dialogBinding.stdinInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 submitStdinInput()
                 true
@@ -478,12 +531,36 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
+
+        if (isAwaitingInput) showInputRow()
+
+        consoleDialog = AlertDialog.Builder(this)
+            .setView(dialogBinding.root)
+            .setOnDismissListener {
+                consoleOutputView = null
+                consoleScrollView = null
+                stdinInputView = null
+                stdinRowView = null
+                consoleDialog = null
+            }
+            .create()
+        consoleDialog?.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            (resources.displayMetrics.heightPixels * 0.85).toInt()
+        )
+        consoleDialog?.show()
+    }
+
+    private fun showInputRow() {
+        stdinRowView?.visibility = View.VISIBLE
+        stdinInputView?.requestFocus()
     }
 
     private fun submitStdinInput() {
-        val text = binding.stdinInput.text.toString()
-        binding.stdinInput.setText("")
-        binding.inputRow.visibility = View.GONE
+        val text = stdinInputView?.text?.toString() ?: return
+        stdinInputView?.setText("")
+        stdinRowView?.visibility = View.GONE
+        isAwaitingInput = false
         appendConsoleOutput("$text\n", "stdin_echo")
         runner.submitInput(text)
     }
@@ -496,15 +573,27 @@ class MainActivity : AppCompatActivity() {
                 else -> Color.parseColor("#D1D5DB")
             }
             if (stream == "stderr") stderrBuffer.append(text)
-            val start = binding.consoleOutput.length()
-            binding.consoleOutput.append(text)
-            (binding.consoleOutput.text as? android.text.Spannable)?.setSpan(
-                android.text.style.ForegroundColorSpan(color),
-                start,
-                binding.consoleOutput.length(),
-                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+
+            val bufferStart = consoleBuffer.length
+            consoleBuffer.append(text)
+            consoleBuffer.setSpan(
+                ForegroundColorSpan(color),
+                bufferStart,
+                consoleBuffer.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-            binding.consoleScroll.post { binding.consoleScroll.fullScroll(View.FOCUS_DOWN) }
+
+            consoleOutputView?.let { view ->
+                val start = view.length()
+                view.append(text)
+                (view.text as? Spannable)?.setSpan(
+                    ForegroundColorSpan(color),
+                    start,
+                    view.length(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                consoleScrollView?.post { consoleScrollView?.fullScroll(View.FOCUS_DOWN) }
+            }
         }
     }
 
@@ -513,6 +602,7 @@ class MainActivity : AppCompatActivity() {
         val line = match.groupValues[1].toIntOrNull() ?: return
         Snackbar.make(binding.root, getString(R.string.error_at_line, line), Snackbar.LENGTH_LONG)
             .setAction(R.string.go_to_line) {
+                consoleDialog?.dismiss()
                 val offset = editorController.offsetForLine(line) ?: return@setAction
                 editorController.requestEditorFocus()
                 editorController.setSelection(offset)

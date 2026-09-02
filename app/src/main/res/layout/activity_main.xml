@@ -12,25 +12,35 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:titleTextColor="@android:color/white"
-            app:navigationIcon="@android:drawable/ic_menu_sort_by_size"
-            app:menu="@menu/toolbar_menu" />
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
+        <!-- Top bar: hamburger + open-file tabs, same row -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#21252B"
-            app:tabMode="scrollable"
-            app:tabGravity="start"
-            app:tabIndicatorColor="#61AFEF"
-            app:tabTextColor="#7F8792"
-            app:tabSelectedTextColor="@android:color/white" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/menuButton"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_margin="4dp"
+                android:contentDescription="@string/files_title"
+                android:src="@drawable/ic_hamburger" />
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabLayout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                app:tabMode="scrollable"
+                app:tabGravity="start"
+                app:tabIndicatorColor="#61AFEF"
+                app:tabTextColor="#7F8792"
+                app:tabSelectedTextColor="@android:color/white" />
+        </LinearLayout>
 
         <!-- Find & replace -->
         <LinearLayout
@@ -110,151 +120,156 @@
                 android:src="@android:drawable/ic_menu_close_clear_cancel" />
         </LinearLayout>
 
-        <!-- Editor -->
-        <ScrollView
-            android:id="@+id/editorScroll"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1.4"
-            android:background="#282C34"
-            android:fillViewport="true"
-            android:scrollbars="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/lineNumbers"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="#21252B"
-                    android:fontFamily="monospace"
-                    android:gravity="end|top"
-                    android:includeFontPadding="false"
-                    android:lineSpacingExtra="0dp"
-                    android:minWidth="32dp"
-                    android:paddingHorizontal="8dp"
-                    android:paddingTop="12dp"
-                    android:textColor="#4B5263"
-                    android:textSize="14sp"
-                    tools:text="1\n2\n3" />
-
-                <EditText
-                    android:id="@+id/codeEditor"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    android:fontFamily="monospace"
-                    android:gravity="top|start"
-                    android:hint="@string/editor_hint"
-                    android:textColorHint="#5C6370"
-                    android:includeFontPadding="false"
-                    android:lineSpacingExtra="0dp"
-                    android:inputType="textMultiLine|textNoSuggestions"
-                    android:padding="12dp"
-                    android:textColor="#ABB2BF"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </ScrollView>
-
-        <!-- Quick symbol toolbar -->
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#21252B"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/symbolToolbar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-        </HorizontalScrollView>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#3E4451" />
-
-        <!-- Console -->
+        <!-- Body: left action rail + editor -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="#1E2127"
-            android:orientation="vertical">
+            android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="#161A20"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="4dp"
-                android:text="@string/console_title"
-                android:textColor="#7F8792"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+            <!-- Left action rail -->
+            <LinearLayout
+                android:layout_width="52dp"
+                android:layout_height="match_parent"
+                android:background="#21252B"
+                android:orientation="vertical"
+                android:paddingTop="4dp">
 
-            <ScrollView
-                android:id="@+id/consoleScroll"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
+                <ImageButton
+                    android:id="@+id/railRunButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/run"
+                    android:src="@android:drawable/ic_media_play"
+                    app:tint="#98C379" />
 
-                <TextView
-                    android:id="@+id/consoleOutput"
+                <ImageButton
+                    android:id="@+id/railStopButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/stop"
+                    android:src="@android:drawable/ic_media_pause"
+                    app:tint="#E06C75" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="4dp"
+                    android:background="#3E4451" />
+
+                <ImageButton
+                    android:id="@+id/railConsoleButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/console_title"
+                    android:src="@android:drawable/ic_menu_view"
+                    app:tint="#61AFEF" />
+
+                <ImageButton
+                    android:id="@+id/railSaveButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/save"
+                    android:src="@android:drawable/ic_menu_save"
+                    app:tint="#ABB2BF" />
+
+                <ImageButton
+                    android:id="@+id/railFindButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/find"
+                    android:src="@android:drawable/ic_menu_search"
+                    app:tint="#ABB2BF" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <ImageButton
+                    android:id="@+id/railMoreButton"
+                    style="?attr/borderlessButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:contentDescription="@string/more"
+                    android:src="@android:drawable/ic_menu_more"
+                    app:tint="#ABB2BF" />
+            </LinearLayout>
+
+            <!-- Editor column -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <ScrollView
+                    android:id="@+id/editorScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="#282C34"
+                    android:fillViewport="true"
+                    android:scrollbars="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/lineNumbers"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="#21252B"
+                            android:fontFamily="monospace"
+                            android:gravity="end|top"
+                            android:includeFontPadding="false"
+                            android:lineSpacingExtra="0dp"
+                            android:minWidth="32dp"
+                            android:paddingHorizontal="8dp"
+                            android:paddingTop="12dp"
+                            android:textColor="#4B5263"
+                            android:textSize="14sp"
+                            tools:text="1\n2\n3" />
+
+                        <EditText
+                            android:id="@+id/codeEditor"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@android:color/transparent"
+                            android:fontFamily="monospace"
+                            android:gravity="top|start"
+                            android:hint="@string/editor_hint"
+                            android:textColorHint="#5C6370"
+                            android:includeFontPadding="false"
+                            android:lineSpacingExtra="0dp"
+                            android:inputType="textMultiLine|textNoSuggestions"
+                            android:padding="12dp"
+                            android:textColor="#ABB2BF"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- Quick symbol toolbar -->
+                <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:padding="12dp"
-                    android:textColor="#D1D5DB"
-                    android:textIsSelectable="true"
-                    android:textSize="13sp" />
-            </ScrollView>
+                    android:background="#21252B"
+                    android:scrollbars="none">
 
-            <LinearLayout
-                android:id="@+id/inputRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="#161A20"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="6dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=">>>"
-                    android:textColor="#61AFEF"
-                    android:fontFamily="monospace"
-                    android:paddingEnd="6dp" />
-
-                <EditText
-                    android:id="@+id/stdinInput"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@android:color/transparent"
-                    android:fontFamily="monospace"
-                    android:hint="@string/waiting_for_input"
-                    android:textColorHint="#5C6370"
-                    android:imeOptions="actionSend"
-                    android:inputType="text"
-                    android:singleLine="true"
-                    android:textColor="@android:color/white"
-                    android:textSize="13sp" />
-
-                <Button
-                    android:id="@+id/stdinSendButton"
-                    style="?attr/borderlessButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/send"
-                    android:textColor="#61AFEF" />
+                    <LinearLayout
+                        android:id="@+id/symbolToolbar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
