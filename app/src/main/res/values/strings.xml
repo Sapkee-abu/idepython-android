@@ -53,4 +53,7 @@
     <string name="run_args_title">อาร์กิวเมนต์ตอนรัน (sys.argv)</string>
     <string name="run_args_hint">เช่น arg1 arg2 arg3</string>
     <string name="run_args_saved">บันทึกอาร์กิวเมนต์แล้ว</string>
+
+    <string name="switch_to_light">สลับเป็นธีมสว่าง</string>
+    <string name="switch_to_dark">สลับเป็นธีมมืด</string>
 </resources>

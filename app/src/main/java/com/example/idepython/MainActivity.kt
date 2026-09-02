@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private var stdinRowView: View? = null
     private var isAwaitingInput = false
     private var runArgs: List<String> = emptyList()
+    private var isLightTheme = false
 
     private val importLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::importFile) }
@@ -71,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         editorController = CodeEditorController(binding.codeEditor, binding.lineNumbers)
+        isLightTheme = prefs.getBoolean(KEY_LIGHT_THEME, false)
 
         setupRail()
         setupSymbolToolbar()
@@ -90,6 +92,7 @@ class MainActivity : AppCompatActivity() {
             }
         )
         editorController.onTextSettled = { text -> checkSyntaxAsync(text) }
+        applyTheme()
 
         restoreSession()
     }
@@ -113,17 +116,73 @@ class MainActivity : AppCompatActivity() {
     private fun showMoreMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menuInflater.inflate(R.menu.rail_more_menu, popup.menu)
+        popup.menu.findItem(R.id.action_theme_toggle).setTitle(
+            if (isLightTheme) R.string.switch_to_dark else R.string.switch_to_light
+        )
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_import -> { importLauncher.launch(arrayOf("*/*")); true }
                 R.id.action_export -> { exportLauncher.launch(currentFile()?.name ?: "code.py"); true }
                 R.id.action_font_increase -> { editorController.fontSizeSp += 2f; persistSession(); true }
                 R.id.action_font_decrease -> { editorController.fontSizeSp -= 2f; persistSession(); true }
+                R.id.action_theme_toggle -> { toggleTheme(); true }
                 R.id.action_about -> { showAboutDialog(); true }
                 else -> false
             }
         }
         popup.show()
+    }
+
+    private fun toggleTheme() {
+        isLightTheme = !isLightTheme
+        prefs.edit().putBoolean(KEY_LIGHT_THEME, isLightTheme).apply()
+        applyTheme()
+    }
+
+    private fun applyTheme() {
+        val p = AppTheme.palette(isLightTheme)
+        val iconTint = android.content.res.ColorStateList.valueOf(p.editorText)
+
+        binding.topBar.setBackgroundColor(p.chromeBg)
+        binding.menuButton.setColorFilter(p.editorText)
+        binding.railContainer.setBackgroundColor(p.chromeBg)
+        binding.railSaveButton.imageTintList = iconTint
+        binding.railFindButton.imageTintList = iconTint
+        binding.railMoreButton.imageTintList = iconTint
+
+        binding.editorScroll.setBackgroundColor(p.editorBg)
+        binding.lineNumbers.setBackgroundColor(p.gutterBg)
+        binding.lineNumbers.setTextColor(p.gutterText)
+        binding.codeEditor.setTextColor(p.editorText)
+        binding.codeEditor.setHintTextColor(p.editorHint)
+
+        binding.symbolToolbarScroll.setBackgroundColor(p.chromeBg)
+        for (i in 0 until binding.symbolToolbar.childCount) {
+            (binding.symbolToolbar.getChildAt(i) as? Button)?.setTextColor(p.symbolText)
+        }
+
+        binding.findBar.setBackgroundColor(p.consoleHeaderBg)
+        binding.findInput.setTextColor(p.editorText)
+        binding.findInput.setHintTextColor(p.editorHint)
+        binding.replaceInput.setTextColor(p.editorText)
+        binding.replaceInput.setHintTextColor(p.editorHint)
+        binding.replaceButton.setTextColor(p.editorText)
+        binding.replaceAllButton.setTextColor(p.editorText)
+        binding.findPrevButton.imageTintList = iconTint
+        binding.findNextButton.imageTintList = iconTint
+        binding.closeFindButton.imageTintList = iconTint
+
+        binding.drawerContainer.setBackgroundColor(p.chromeBg)
+        binding.drawerHeader.setBackgroundColor(p.drawerHeaderBg)
+        binding.tabLayout.setTabTextColors(p.tabTextInactive, p.tabTextActive)
+        // Tabs use custom views, so setTabTextColors above doesn't reach them.
+        for (i in 0 until binding.tabLayout.tabCount) {
+            val customView = binding.tabLayout.getTabAt(i)?.customView ?: continue
+            ItemTabBinding.bind(customView).tabTitle.setTextColor(p.tabTextInactive)
+        }
+
+        binding.syntaxErrorBanner.setBackgroundColor(p.bannerBg)
+        binding.syntaxErrorBanner.setTextColor(p.bannerText)
     }
 
     private fun showAboutDialog() {
@@ -169,6 +228,7 @@ class MainActivity : AppCompatActivity() {
     private fun addTabView(file: File) {
         val tabBinding = ItemTabBinding.inflate(layoutInflater)
         tabBinding.tabTitle.text = file.name
+        tabBinding.tabTitle.setTextColor(AppTheme.palette(isLightTheme).tabTextInactive)
         tabBinding.tabClose.setOnClickListener { closeTab(openTabs.indexOf(file)) }
         val tab = binding.tabLayout.newTab().setCustomView(tabBinding.root)
         binding.tabLayout.addTab(tab)
@@ -568,6 +628,14 @@ class MainActivity : AppCompatActivity() {
         stdinInputView = dialogBinding.stdinInput
         stdinRowView = dialogBinding.inputRow
 
+        val p = AppTheme.palette(isLightTheme)
+        dialogBinding.consoleRoot.setBackgroundColor(p.consoleBg)
+        dialogBinding.consoleHeader.setBackgroundColor(p.consoleHeaderBg)
+        dialogBinding.consoleOutput.setTextColor(p.consoleText)
+        dialogBinding.inputRow.setBackgroundColor(p.consoleHeaderBg)
+        dialogBinding.stdinInput.setTextColor(p.consoleText)
+        dialogBinding.stdinInput.setHintTextColor(p.editorHint)
+
         dialogBinding.consoleOutput.text = consoleBuffer
         dialogBinding.consoleScroll.post { dialogBinding.consoleScroll.fullScroll(View.FOCUS_DOWN) }
 
@@ -686,6 +754,7 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_ACTIVE = "active_tab"
         private const val KEY_FONT_SIZE = "font_size"
         private const val KEY_RUN_ARGS = "run_args"
+        private const val KEY_LIGHT_THEME = "light_theme"
         private val ERROR_LINE_REGEX = Regex("""File "<idepython>", line (\d+)""")
     }
 }

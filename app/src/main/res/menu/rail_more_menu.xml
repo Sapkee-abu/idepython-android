@@ -4,5 +4,6 @@
     <item android:id="@+id/action_export" android:title="@string/export_file" />
     <item android:id="@+id/action_font_increase" android:title="@string/font_increase" />
     <item android:id="@+id/action_font_decrease" android:title="@string/font_decrease" />
+    <item android:id="@+id/action_theme_toggle" android:title="@string/switch_to_light" />
     <item android:id="@+id/action_about" android:title="@string/about" />
 </menu>
