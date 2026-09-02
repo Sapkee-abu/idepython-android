@@ -34,6 +34,14 @@ class CodeEditorController(
     private var lastLineCount = -1
     private var errorLine: Int? = null
 
+    // AppCompatEditText.getText() is nullable in Kotlin's eyes, but an
+    // EditText always has a live Editable buffer once constructed — centralize
+    // the assumption here instead of scattering !!/?. through the class.
+    // Named "editable" (not "text") since several methods below already have
+    // a parameter or local named "text".
+    private val editable: Editable
+        get() = editor.text!!
+
     private val openToClose = mapOf('(' to ')', '[' to ']', '{' to '}')
     private val closeToOpen = mapOf(')' to '(', ']' to '[', '}' to '{')
     private val closers = setOf(')', ']', '}')
@@ -75,8 +83,8 @@ class CodeEditorController(
             }
         })
         editor.onSelectionChange = { start, end -> if (start == end) updateBracketMatch(start) }
-        lastSnapshot = editor.text.toString()
-        updateLineNumbers(editor.text)
+        lastSnapshot = editable.toString()
+        updateLineNumbers(editable)
     }
 
     // ---- Auto-indent / auto-pair ---------------------------------------
@@ -285,7 +293,7 @@ class CodeEditorController(
         }
         lastSnapshot = text
         updateLineNumbers(text)
-        PythonSyntaxHighlighter.highlight(editor.text)
+        PythonSyntaxHighlighter.highlight(editable)
         onTextSettled?.invoke(text)
     }
 
@@ -302,16 +310,16 @@ class CodeEditorController(
         redoStack.clear()
         errorLine = null
         updateLineNumbers(text)
-        PythonSyntaxHighlighter.highlight(editor.text)
+        PythonSyntaxHighlighter.highlight(editable)
         onTextSettled?.invoke(text)
     }
 
-    fun getText(): String = editor.text.toString()
+    fun getText(): String = editable.toString()
 
     fun insertAtCursor(text: String) {
         val start = editor.selectionStart.coerceAtLeast(0)
         val end = editor.selectionEnd.coerceAtLeast(0)
-        editor.text.replace(minOf(start, end), maxOf(start, end), text)
+        editable.replace(minOf(start, end), maxOf(start, end), text)
     }
 
     fun requestEditorFocus() {
@@ -319,7 +327,7 @@ class CodeEditorController(
     }
 
     fun setSelection(offset: Int) {
-        editor.setSelection(offset.coerceIn(0, editor.text.length))
+        editor.setSelection(offset.coerceIn(0, editable.length))
     }
 
     /** Character offset of the first column of a 1-based line number. */

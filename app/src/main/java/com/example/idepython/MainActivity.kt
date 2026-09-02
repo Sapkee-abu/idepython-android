@@ -445,7 +445,7 @@ class MainActivity : AppCompatActivity() {
         if (start in 0..editorController.getText().length && end >= start) {
             val selected = editorController.getText().substring(start, end.coerceAtMost(editorController.getText().length))
             if (selected == query) {
-                binding.codeEditor.text.replace(start, end, replacement)
+                binding.codeEditor.text?.replace(start, end, replacement)
             }
         }
         findNext(forward = true)

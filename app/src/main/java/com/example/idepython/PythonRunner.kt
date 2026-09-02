@@ -41,8 +41,9 @@ class PythonRunner(
 
     /** Runs check_syntax(code) synchronously — call from a background thread. */
     fun checkSyntax(code: String): String? {
+        // Chaquopy marshals Python None to Kotlin/Java null, not a PyObject.
         val result = Python.getInstance().getModule("runner").callAttr("check_syntax", code)
-        return if (result.isNone) null else result.toString()
+        return result?.toString()
     }
 
     /** Supplies the line an in-flight onInputRequested() call is blocked on. */
